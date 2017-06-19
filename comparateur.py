@@ -1,53 +1,108 @@
 import re
 
-
-# Files
-sample = open(sys.argv[1], 'r')
-control = open(sys.argv[2], 'r')
-FP_log_name = str(sys.argv[1]) + "_false_positives.txt"
-FP_log = open(FP_log_name,'w')
-FP_log_name = str(sys.argv[1]) + "_matched_results.txt"
-matched_log = open(FP_log_name,'w')
-
-temoin = open('mutations.vcf', 'r')
-sample = open('variants_amp80.vcf', 'r')
-
-identified = 0
-false_negative = 0
-control_list = []
+# Define the program
+def stat_program(filename):
+	sample = open(filename, 'r')
+	noext_filename = os.path.splitext(os.path.basename(filename))[0]
+	# Files
+	# sample = open(sys.argv[1], 'r')
+	control = open(sys.argv[2], 'r')
+	FP_log_name = str(noext_filename) + "_false_positives.txt"
+	FP_log = open(FP_log_name,'w')
+	FP_log_regex = open(str(noext_filename) + "_false_positives" + "_regex.txt",'w')
+	matched_log_name = str(noext_filename) + "_matched_results.txt"
+	matched_log = open(matched_log_name,'w')
 
 
+	# variables
+	origin_dict = {}
+	sample_id_list = []
+	control_id_list = []
+	false_negative = 0
+	true_positive = 0
+	control_id_count = 0
+	false_positive = 0
+	sample_list_count = 0
+	true_positive_verify = 0
 
-# Create list from lines in sample
-sample_list = []
-for line in sample.readlines():
-	print(line)
-	try:
-		sample_pos = re.findall(sample_regex, line)[0]
-		sample_chr = re.findall(chromosome_regex, line)[0]
-		sample_key = str(sample_chr) + str(sample_pos)
-		sample_list.append(sample_key)
-	except:
-		pass
+	cmd = str("sort -u " + str(filename) + " > " + str(noext_filename) + "_sorted.vcf")
+	os.system(cmd)
+
+	sample.close()
+	sample = open(str(noext_filename) + "_sorted.vcf", 'r')
+
+	# Create sample list to later be deduplicated
+	for line in sample:
+		if not line.startswith("#", 0, 1):
+			split_line = line.split("\t")
+			sample_chr = split_line[0]
+			sample_pos = split_line[1]
+			sample_alt = split_line[3]
+			sample_id = str(sample_chr) + "_" + str(sample_pos) + "_" + str(sample_alt)
+			sample_id = sample_id.replace(" ", "")
+			FP_log_regex.write("(" + str(sample_pos) + ")|")
+			if sample_id not in sample_id_list:
+				sample_id_list.append(sample_id)
 
 
 
-control_dict = {}
-mutation = ""
-clone = ""
+	# Find true positives and false negatives by comparing Control > sample
+	for line in control:
+		if not line.startswith("#", 0, 1):
+			control_id_count +=1
+			split_line = line.split("\t")
+			control_chr = split_line[0]
+			control_pos = split_line[1]
+			control_alt = split_line[3]
+			control_origin = split_line[7]
+			control_id = str(control_chr) + "_" + str(control_pos) + "_" + str(control_alt)
+			control_id = control_id.replace(" ", "")
+			if control_id not in control_id_list:
+				control_id_list.append(control_id)
+				origin_dict.update({control_id:control_origin})
+			if control_id in sample_id_list:
+				true_positive += 1
+			else:
+				false_negative += 1
 
-somatic_list = open(str(sample_name + "_somatic_list.txt"), "w")
-germline_list = open(str(sample_name + "_germline_list.txt"), "w")
-somatic_control_count = 0
-germline_control_count = 0
-control_total_count = 0
 
-for line in control:
-	try:
-		control_pos = re.findall(control_regex, line)[0]
-		control_chr = re.findall(chromosome_regex, line)[0]
-		control_dict_key = str(control_chr) + str(control_pos)
-		control_total_count += 1
+
+	# Find false positives
+	for item in sample_id_list:
+		sample_list_count += 1
+		if item not in control_id_list:
+			false_positive += 1
+			FP_log.write(str(item) + "\n")
+		else:
+			matched_log.write(str(item) + "\t" + str(origin_dict[item]))
+			true_positive_verify +=1
+
+
+
+	# Print results
+	print("\n ### Results for sample : " + str(filename))
+	print(" True Pos : " + str(true_positive) + " = " + str(true_positive_verify))
+	print(" False Neg : " + str(false_negative))
+	print(" Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
+	print(" Total mutations in Sample : " + str(sample_list_count))
+	print(" False Positives : " + str(false_positive))
+	print(" Sensitivity : " + str(100 * true_positive / (true_positive + false_negative)) + " %")
+	print(" Precision : " + str(100 * true_positive / (true_positive + false_positive)) + " %\n")
+	
+
+	FP_log.close()
+	FP_log_regex.close()
+	matched_log.close()
+
+	# testsubject = str(sys.argv[2])
+	# FP_log_regex = open((str(noext_filename) + "_false_positives" + "_regex.txt"),'r').read()
+	# FP_log_regex = "sed \"/" + FP_log_regex + "/p\" " + str(testsubject) + " > " + str(testsubject) + "_matches.txt"
+	# print(FP_log_regex)
+# End of function
+
+
+
+
 
 
 		chrType = re.findall(origin_regex, line)[0]
@@ -62,81 +117,16 @@ for line in control:
 	except:
 			pass
 
-# Print results
-print("\n################# S T A T S ##################\n")
-print(" True Pos : " + str(true_positive) + " = " + str(true_positive_verify))
-print(" False Neg : " + str(false_negative))
-print(" Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
-print(" Total mutations in Sample : " + str(sample_list_count))
-print(" False Positives : " + str(false_positive))
-print(" Sensitivity : " + str(100 * true_positive / (true_positive + false_negative)) + " %")
-print(" Precision : " + str(100 * true_positive / (true_positive + false_positive)) + " %")
+
+print("\n################# S T A T S ##################")
+
+# Execute the program with the inputted files
+if os.path.isdir(sys.argv[1]) == False:
+	# sample = open(sys.argv[1], 'r')
+	stat_program(sys.argv[1])
+else:
+	for filename in os.listdir(sys.argv[1]):
+		filename_path = str(sys.argv[1]) + "/" + str(filename)
+		stat_program(filename_path)
+
 print("\n##############################################\n")
-FP_log.close()
-matched_log.close()
-
-
-
-		control_dict_value = str(clone) + "|| \t ||" + str(mutation) + "||"
-		control_dict.update({control_dict_key:control_dict_value})
-	except:
-		pass
-
-
-# DETECT FALSE POSITIVES
-false_positive = 0
-for line in sample:
-	try:
-		sample_chr = re.findall(chromosome_regex, line)[0]
-		sample_pos = re.findall(sample_regex, line)[0]
-		sample_key = str(sample_chr) + str(sample_pos)
-
-		if sample_key not in control_dict.keys():
-			false_positive += 1
-
-	except:
-		pass
-
-
-# DETECT FALSE NEGATIVES
-true_positive = 0
-for key in control_dict.keys():
-	if key in sample_list:
-		true_positive += 1
-	else:
-		false_negative += 1
-
-
-
-for line in iter(temoin):
-	temoin_pos = re.findall(temoin_regex, line)
-	if temoin_pos:
-		for line in iter(sample):
-			sample_pos = re.findall(sample_regex, line)
-			if sample_pos:
-				if sample_pos[0] == temoin_pos[0]:
-					identified = identified + 1
-					print(str(identified))
-				else:
-					print("temoin: " + str(temoin_pos[0]) + " | sample: " + str(sample_pos[0]))
-
-
-	# print("looking for position : " + str(temoin_pos))
-
-
-
-
-# for line in temoin:
-# 	temoin_pos = re.findall(temoin_regex, line)[0]
-# 	print("looking for position : " + str(temoin_pos))
-# 	for line in sample:
-# 		myPos_d = re.findall(sample_regex, line)
-# 		try:
-# 			myPos_d = myPos_d[0]
-
-# 		except Exception:
-# 			pass
-
-# 		if temoin_pos == myPos_d:
-# 			print(temoin_pos + " found in " + myPos_d)
-# 			identified = identified + 1

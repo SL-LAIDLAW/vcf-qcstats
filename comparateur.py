@@ -13,7 +13,6 @@ def stat_program(filename):
 	matched_log_name = str(noext_filename) + "_matched_results.txt"
 	matched_log = open(matched_log_name,'w')
 
-
 	# variables
 	origin_dict = {}
 	sample_id_list = []
@@ -81,14 +80,21 @@ def stat_program(filename):
 
 	# Print results
 	print("\n ### Results for sample : " + str(filename))
+	results_log.write("\n ### Results for sample : " + str(filename))
 	print(" True Pos : " + str(true_positive) + " = " + str(true_positive_verify))
+	results_log.write("\n True Pos : " + str(true_positive) + " = " + str(true_positive_verify))
 	print(" False Neg : " + str(false_negative))
+	results_log.write("\n False Neg : " + str(false_negative))
 	print(" Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
+	results_log.write("\n Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
 	print(" Total mutations in Sample : " + str(sample_list_count))
+	results_log.write("\n False Positives : " + str(false_positive))
 	print(" False Positives : " + str(false_positive))
+	results_log.write("\n False Positives : " + str(false_positive))
 	print(" Sensitivity : " + str(100 * true_positive / (true_positive + false_negative)) + " %")
+	results_log.write("\n Sensitivity : " + str(100 * true_positive / (true_positive + false_negative)) + " %")
 	print(" Precision : " + str(100 * true_positive / (true_positive + false_positive)) + " %\n")
-	
+	results_log.write("\n Precision : " + str(100 * true_positive / (true_positive + false_positive)) + " %\n")
 
 	FP_log.close()
 	FP_log_regex.close()
@@ -105,28 +111,19 @@ def stat_program(filename):
 
 
 
-		chrType = re.findall(origin_regex, line)[0]
-		if chrType == "A" or "B":
-			somatic_list.write(line)
-			somatic_control_count += 1
-		elif chrType == "germline|A|B":
-			clone = "Clone Germline"
-			germline_list.write(line)
-			germline_control_count += 1
-
-	except:
-			pass
-
+results_log = open("table_results.txt",'w')
 
 print("\n################# S T A T S ##################")
+results_log.write("\n################# S T A T S ##################")
 
 # Execute the program with the inputted files
 if os.path.isdir(sys.argv[1]) == False:
-	# sample = open(sys.argv[1], 'r')
 	stat_program(sys.argv[1])
+
 else:
 	for filename in os.listdir(sys.argv[1]):
 		filename_path = str(sys.argv[1]) + "/" + str(filename)
 		stat_program(filename_path)
 
 print("\n##############################################\n")
+results_log.write("\n##############################################\n")

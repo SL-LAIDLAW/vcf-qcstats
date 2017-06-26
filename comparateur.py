@@ -4,16 +4,25 @@ import re
 def stat_program(filename):
 	sample = open(filename, 'r')
 	noext_filename = os.path.splitext(os.path.basename(filename))[0]
-	# Files
-	# sample = open(sys.argv[1], 'r')
 	control = open(sys.argv[2], 'r')
-	FP_log_name = str(noext_filename) + "_false_positives.txt"
-	FP_log = open(FP_log_name,'w')
-	FN_log_name = str(noext_filename) + "_false_negatives.txt"
-	FN_log = open(FN_log_name,'w')
-	FP_log_regex = open(str(noext_filename) + "_false_positives" + "_regex.txt",'w')
-	matched_log_name = str(noext_filename) + "_matched_results.txt"
-	matched_log = open(matched_log_name,'w')
+	quality_table_name = str(noext_filename) + "_quality_table.txt"
+	quality_table = open(quality_table_name,'w')
+
+	if snakefile == False:
+			quality_table = open("variants_amp80_quality_table.txt",'w')
+			FP_log_name = str(noext_filename) + "_false_positives.txt"
+			FP_log = open(FP_log_name,'w')
+			FN_log_name = str(noext_filename) + "_false_negatives.txt"
+			FN_log = open(FN_log_name,'w')
+			FP_log_regex = open(str(noext_filename) + "_false_positives" + "_regex.txt",'w')
+			matched_log_name = str(noext_filename) + "_matched_results.txt"
+			matched_log = open(matched_log_name,'w')
+			quality_TP_log_name = str(noext_filename) + "_TP_quality.txt"
+			quality_TP_log = open(quality_TP_log_name,'w')
+			quality_FP_log_name = str(noext_filename) + "_FP_quality.txt"
+			quality_FP_log = open(quality_FP_log_name,'w')
+
+
 
 	# variables
 	origin_dict = {}
@@ -43,7 +52,8 @@ def stat_program(filename):
 			sample_id = str(sample_chr) + "_" + str(sample_pos) + "_" + str(sample_alt)
 			sample_id = sample_id.replace(" ", "")
 			sample_id = sample_id.upper()
-			# FP_log_regex.write("(" + str(sample_pos) + ")|")
+			if snakefile == False:
+				FP_log_regex.write("(" + str(sample_pos) + ")|")
 			if sample_id not in sample_id_list:
 				sample_id_list.append(sample_id)
 
@@ -69,7 +79,8 @@ def stat_program(filename):
 				true_positive += 1
 			else:
 				false_negative += 1
-				FN_log.write(line)
+				if snakefile == False:
+					FN_log.write(line)
 
 
 
@@ -78,60 +89,68 @@ def stat_program(filename):
 		sample_list_count += 1
 		if item not in control_id_list:
 			false_positive += 1
-			FP_log.write(str(item) + "\n")
-			# quality_FP_log.write(str(quality_dict[item]) + "\n")
+			if snakefile == False:
+				FP_log.write(str(item) + "\n")
+				quality_FP_log.write(str(quality_dict[item]) + "\n")
 			quality_table.write(str(quality_dict[item]) + "\t" + "FP" + "\n")
 		else:
-			matched_log.write(str(item) + "\t" + str(origin_dict[item]))
-			# quality_TP_log.write(str(quality_dict[item]) + "\n")
+			if snakefile == False:
+				matched_log.write(str(item) + "\t" + str(origin_dict[item]))
+				quality_TP_log.write(str(quality_dict[item]) + "\n")
 			quality_table.write(str(quality_dict[item]) + "\t" + "TP" + "\n")
 			true_positive_verify +=1
 
 
+	if snakefile == False:
+		# Print results
+		print("\n ### Results for sample : " + str(filename))
+		results_log.write("\n ### Results for sample : " + str(filename))
+		print(" True Pos : " + str(true_positive) + " = " + str(true_positive_verify))
+		results_log.write("\n True Pos : " + str(true_positive) + " = " + str(true_positive_verify))
+		print(" False Neg : " + str(false_negative))
+		results_log.write("\n False Neg : " + str(false_negative))
+		print(" Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
+		results_log.write("\n Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
+		print(" Total mutations in Sample : " + str(sample_list_count))
+		results_log.write("\n False Positives : " + str(false_positive))
+		print(" False Positives : " + str(false_positive))
+		results_log.write("\n False Positives : " + str(false_positive))
+		result_sensitivity = 100 * true_positive / (true_positive + false_negative)
+		print(" Sensitivity : " + str(result_sensitivity) + " %")
+		results_log.write("\n Sensitivity : " + str(result_sensitivity) + " %")
+		result_precision = 100 * true_positive / (true_positive + false_positive)
+		print(" Precision : " + str(result_precision) + " %")
+		results_log.write("\n Precision : " + str(result_precision) + " %")
+		print(" F-Score : " + str(2*((result_precision * result_sensitivity)/(result_precision + result_sensitivity)) ))
+		results_log.write("\n F-Score : " + str(2*((result_precision * result_sensitivity)/(result_precision + result_sensitivity)) ) + "\n")
 
-	# # Print results
-	# print("\n ### Results for sample : " + str(filename))
-	# results_log.write("\n ### Results for sample : " + str(filename))
-	# print(" True Pos : " + str(true_positive) + " = " + str(true_positive_verify))
-	# results_log.write("\n True Pos : " + str(true_positive) + " = " + str(true_positive_verify))
-	# print(" False Neg : " + str(false_negative))
-	# results_log.write("\n False Neg : " + str(false_negative))
-	# print(" Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
-	# results_log.write("\n Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
-	# print(" Total mutations in Sample : " + str(sample_list_count))
-	# results_log.write("\n False Positives : " + str(false_positive))
-	# print(" False Positives : " + str(false_positive))
-	# results_log.write("\n False Positives : " + str(false_positive))
-	# result_sensitivity = 100 * true_positive / (true_positive + false_negative)
-	# print(" Sensitivity : " + str(result_sensitivity) + " %")
-	# results_log.write("\n Sensitivity : " + str(result_sensitivity) + " %")
-	# result_precision = 100 * true_positive / (true_positive + false_positive)
-	# print(" Precision : " + str(result_precision) + " %")
-	# results_log.write("\n Precision : " + str(result_precision) + " %")
-	# print(" F-Score : " + str(2*((result_precision * result_sensitivity)/(result_precision + result_sensitivity)) ))
-	# results_log.write("\n F-Score : " + str(2*((result_precision * result_sensitivity)/(result_precision + result_sensitivity)) ) + "\n")
 
+		FP_log.close()
+		FP_log_regex.close()
+		matched_log.close()
+		quality_TP_log.close()
 
-	# FP_log.close()
-	# FP_log_regex.close()
-	# matched_log.close()
-	quality_TP_log.close()
-
-	# testsubject = str(sys.argv[2])
-	# FP_log_regex = open((str(noext_filename) + "_false_positives" + "_regex.txt"),'r').read()
-	# FP_log_regex = "sed \"/" + FP_log_regex + "/p\" " + str(testsubject) + " > " + str(testsubject) + "_matches.txt"
-	# print(FP_log_regex)
+		testsubject = str(sys.argv[2])
+		FP_log_regex = open((str(noext_filename) + "_false_positives" + "_regex.txt"),'r').read()
+		FP_log_regex = "sed \"/" + FP_log_regex + "/p\" " + str(testsubject) + " > " + str(testsubject) + "_matches.txt"
+		# print(FP_log_regex)
 # End of function
 
 
+# See if the snakefile option is activated
+try:
+	snakefile = False
+	if str(sys.argv[3]) == "snakefile":
+		snakefile = True
+# catch the error caused by there not being a snakefile option
+except IndexError:
+	pass
 
 
-
-
-# results_log = open("table_results.txt",'w')
-
-# print("\n################# S T A T S ##################")
-# results_log.write("\n################# S T A T S ##################")
+if snakefile == False:
+	results_log = open("table_results.txt",'w')
+	print("\n################# S T A T S ##################")
+	results_log.write("\n################# S T A T S ##################")
 
 # Execute the program with the inputted files
 if os.path.isdir(sys.argv[1]) == False:
@@ -142,5 +161,6 @@ else:
 		filename_path = str(sys.argv[1]) + "/" + str(filename)
 		stat_program(filename_path)
 
-# print("\n##############################################\n")
-# results_log.write("\n##############################################\n")
+if snakefile == False:
+	print("\n##############################################\n")
+	results_log.write("\n##############################################\n")

@@ -1,10 +1,16 @@
+ #!/usr/bin/python
+ # -*- coding: utf-8 -*-
+ # Version 1.20
+
+import argparse
+import sys
 import re
 
 # Define the program
 def stat_program(filename):
 	sample = open(filename, 'r')
 	noext_filename = os.path.splitext(os.path.basename(filename))[0]
-	control = open(sys.argv[2], 'r')
+	control = open(args['control'], 'r')
 	quality_table_name = str(noext_filename) + "_quality_table.txt"
 	quality_table = open(quality_table_name,'w')
 
@@ -42,20 +48,29 @@ def stat_program(filename):
 	sample = open(str(noext_filename) + "_sorted.vcf", 'r')
 
 	# Create sample list to later be deduplicated
-	for line in sample:
-		if not line.startswith("#", 0, 1):
-			split_line = line.split("\t")
-			sample_chr = split_line[0]
-			sample_pos = split_line[1]
-			print(str(sample_pos))
-			sample_alt = split_line[3]
-			sample_id = str(sample_chr) + "_" + str(sample_pos) + "_" + str(sample_alt)
-			sample_id = sample_id.replace(" ", "")
-			sample_id = sample_id.upper()
-			if snakefile == False:
-				FP_log_regex.write("(" + str(sample_pos) + ")|")
-			if sample_id not in sample_id_list:
-				sample_id_list.append(sample_id)
+	sampleExt = str(args['sample'])
+	sampleExt = sampleExt[-3:]
+	print(sampleExt)
+	# if vcf then use standardised vcf columns
+	if sampleExt == "vcf":
+		for line in sample:
+			if not line.startswith("#", 0, 1):
+				split_line = line.split("\t")
+				sample_chr = split_line[0]
+				sample_pos = split_line[1]
+				# print(str(sample_pos))
+				sample_alt = split_line[3]
+				sample_qual = split_line[5]
+				sample_id = str(sample_chr) + "_" + str(sample_pos) + "_" + str(sample_alt)
+				sample_id = sample_id.replace(" ", "")
+				sample_id = sample_id.upper()
+				if snakefile == False:
+					FP_log_regex.write("(" + str(sample_pos) + ")|")
+				if sample_id not in sample_id_list:
+					sample_id_list.append(sample_id)
+					quality_dict_entry = {sample_id : sample_qual}
+					quality_dict.update(quality_dict_entry)
+
 
 	print("\n\n\n")
 
@@ -130,21 +145,24 @@ def stat_program(filename):
 		matched_log.close()
 		quality_TP_log.close()
 
-		testsubject = str(sys.argv[2])
+		testsubject = str(args['control'])
 		FP_log_regex = open((str(noext_filename) + "_false_positives" + "_regex.txt"),'r').read()
 		FP_log_regex = "sed \"/" + FP_log_regex + "/p\" " + str(testsubject) + " > " + str(testsubject) + "_matches.txt"
 		# print(FP_log_regex)
 # End of function
 
 
-# See if the snakefile option is activated
-try:
-	snakefile = False
-	if str(sys.argv[3]) == "snakefile":
-		snakefile = True
-# catch the error caused by there not being a snakefile option
-except IndexError:
-	pass
+# Parse arguments
+parser = argparse.ArgumentParser(description="Sean's magic tool to compare sample and control vcf to determine simple statistics.")
+parser.add_argument('-s','--sample', help='--sample [sample.vcf]', required=True)
+parser.add_argument('-c','--control', help='the control file to test the sample against \n --control [control.vcf]', required=True)
+parser.add_argument('--snakefile',  action='store_true', help='When activated, script will only generate the files necessary for the snakefile', required=False)
+args = vars(parser.parse_args())
+
+if bool(args['snakefile']) == True:
+	snakefile = True
+else:
+    snakefile = False
 
 
 if snakefile == False:
@@ -153,12 +171,12 @@ if snakefile == False:
 	results_log.write("\n################# S T A T S ##################")
 
 # Execute the program with the inputted files
-if os.path.isdir(sys.argv[1]) == False:
-	stat_program(sys.argv[1])
+if os.path.isdir(args['sample']) == False:
+	stat_program(args['sample'])
 
 else:
-	for filename in os.listdir(sys.argv[1]):
-		filename_path = str(sys.argv[1]) + "/" + str(filename)
+	for filename in os.listdir(args['sample']):
+		filename_path = str(args['sample']) + "/" + str(filename)
 		stat_program(filename_path)
 
 if snakefile == False:

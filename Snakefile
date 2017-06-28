@@ -1,6 +1,6 @@
 DIR = "."
 control = 'controlGP.vcf'
-sample = 'variants_amp70.vcf'
+sample = 'variants_amp50.vcf'
 
 rule final:
     input:
@@ -13,17 +13,17 @@ rule quantify_genes:
         s = sample
 
     output:
-        sort = "variants_amp70_sorted.vcf",
-        table = "variants_amp70_quality_table.txt"
+        sort = "variants_amp50_sorted.vcf",
+        table = "variants_amp50_quality_table.txt"
 
 
     shell:
-        "python comparateur.py {input.s} {input.c} snakefile"
+        "python comparateur.py -s {input.s} -c {input.c} --snakefile"
 
 
 rule generate_plots:
     input:
-        t = "variants_amp70_quality_table.txt",
+        t = "variants_amp50_quality_table.txt",
         r = "plot.R"
 
     output:

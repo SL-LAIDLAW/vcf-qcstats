@@ -1,6 +1,6 @@
  #!/usr/bin/python
  # -*- coding: utf-8 -*-
- # Version 1.20
+ # Version 1.21
 
 import argparse
 import sys
@@ -51,7 +51,7 @@ def stat_program(filename):
 	sample.close()
 	sample = open(str(noext_filename) + "_sorted.vcf", 'r')
 
-	quality_table.write("quality" + "\t" + "category" + "\n")
+	quality_table.write("quality" + "\t" + "category" + "\t" + "origin" + "\n")
 
 	# Create sample list to later be deduplicated
 	sampleExt = str(args['sample'])
@@ -123,12 +123,18 @@ def stat_program(filename):
 			if snakefile == False:
 				FP_log.write(str(item) + "\n")
 				quality_FP_log.write(str(quality_dict[item]) + "\n")
-			quality_table.write(str(quality_dict[item]) + "\t" + "FP" + "\n")
+			quality_table.write(str(quality_dict[item]) + "\t" + "FP" + "\t" + "\n")
 		else:
 			if snakefile == False:
 				matched_log.write(str(item) + "\t" + str(origin_dict[item]))
 				quality_TP_log.write(str(quality_dict[item]) + "\n")
-			quality_table.write(str(quality_dict[item]) + "\t" + "TP" + "\n")
+			if (len(str(origin_dict[item])) > 8):
+				mut_origin = str(origin_dict[item])[6:]
+				mut_origin = mut_origin[:8]
+			else:
+				mut_origin = str(origin_dict[item])[6:]
+
+			quality_table.write(str(quality_dict[item]) + "\t" + "TP" + "\t" + mut_origin + "\n")
 			true_positive_verify +=1
 
 

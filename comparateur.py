@@ -1,6 +1,6 @@
  #!/usr/bin/python
  # -*- coding: utf-8 -*-
- # Version 1.21
+ # Version 1.22
 
 import argparse
 import sys
@@ -12,20 +12,22 @@ def stat_program(filename):
 	noext_filename = os.path.splitext(os.path.basename(filename))[0]
 	control = open(args['control'], 'r')
 	quality_table_name = str(noext_filename) + "_quality_table.txt"
-	quality_table = open(quality_table_name,'w')
+	if dryrun == False:
+		quality_table = open(quality_table_name,'w')
 
 	if snakefile == False:
 			FP_log_name = str(noext_filename) + "_false_positives.txt"
-			FP_log = open(FP_log_name,'w')
 			FN_log_name = str(noext_filename) + "_false_negatives.txt"
-			FN_log = open(FN_log_name,'w')
-			FP_log_regex = open(str(noext_filename) + "_false_positives" + "_regex.txt",'w')
 			matched_log_name = str(noext_filename) + "_matched_results.txt"
-			matched_log = open(matched_log_name,'w')
 			quality_TP_log_name = str(noext_filename) + "_TP_quality.txt"
-			quality_TP_log = open(quality_TP_log_name,'w')
 			quality_FP_log_name = str(noext_filename) + "_FP_quality.txt"
-			quality_FP_log = open(quality_FP_log_name,'w')
+			if dryrun == False:
+				FP_log = open(FP_log_name,'w')
+				FN_log = open(FN_log_name,'w')
+				FP_log_regex = open(str(noext_filename) + "_false_positives" + "_regex.txt",'w')
+				matched_log = open(matched_log_name,'w')
+				quality_TP_log = open(quality_TP_log_name,'w')
+				quality_FP_log = open(quality_FP_log_name,'w')
 
 
 	# variables
@@ -50,10 +52,10 @@ def stat_program(filename):
 	os.system(cmd)
 	sample.close()
 	sample = open(str(noext_filename) + "_sorted.vcf", 'r')
+	if dryrun == False:
+		quality_table.write("quality" + "\t" + "category" + "\t" + "origin" + "\n")
 
-	quality_table.write("quality" + "\t" + "category" + "\t" + "origin" + "\n")
-
-	# Create sample list to later be deduplicated
+	# Determine file type of sample
 	sampleExt = str(args['sample'])
 	sampleExt = sampleExt[-3:]
 
@@ -70,7 +72,8 @@ def stat_program(filename):
 				sample_id = sample_id.replace(" ", "")
 				sample_id = sample_id.upper()
 				if snakefile == False:
-					FP_log_regex.write("(" + str(sample_pos) + ")|")
+					if dryrun == False:
+						FP_log_regex.write("(" + str(sample_pos) + ")|")
 				if sample_id not in sample_id_list:
 					sample_id_list.append(sample_id)
 					quality_dict_entry = {sample_id : sample_qual}
@@ -111,7 +114,8 @@ def stat_program(filename):
 				elif "CLONE=G" in control_origin:
 					FN_cloneG += 1
 				if snakefile == False:
-					FN_log.write(line)
+					if dryrun == False:
+						FN_log.write(line)
 
 
 
@@ -120,69 +124,67 @@ def stat_program(filename):
 		sample_list_count += 1
 		if item not in control_id_list:
 			false_positive += 1
-			if snakefile == False:
-				FP_log.write(str(item) + "\n")
-				quality_FP_log.write(str(quality_dict[item]) + "\n")
-			quality_table.write(str(quality_dict[item]) + "\t" + "FP" + "\t" + "\n")
+			if dryrun == False:
+				if snakefile == False:
+					FP_log.write(str(item) + "\n")
+					quality_FP_log.write(str(quality_dict[item]) + "\n")
+				quality_table.write(str(quality_dict[item]) + "\t" + "FP" + "\t" + "\n")
 		else:
-			if snakefile == False:
-				matched_log.write(str(item) + "\t" + str(origin_dict[item]))
-				quality_TP_log.write(str(quality_dict[item]) + "\n")
+			if dryrun == False:
+				if snakefile == False:
+					matched_log.write(str(item) + "\t" + str(origin_dict[item]))
+					quality_TP_log.write(str(quality_dict[item]) + "\n")
 			if (len(str(origin_dict[item])) > 8):
 				mut_origin = str(origin_dict[item])[6:]
 				mut_origin = mut_origin[:8]
 			else:
 				mut_origin = str(origin_dict[item])[6:]
-
-			quality_table.write(str(quality_dict[item]) + "\t" + "TP" + "\t" + mut_origin + "\n")
+			if dryrun == False:
+				quality_table.write(str(quality_dict[item]) + "\t" + "TP" + "\t" + mut_origin + "\n")
 			true_positive_verify +=1
 
-
+	result_sensitivity = 100 * true_positive / (true_positive + false_negative)
+	result_precision = 100 * true_positive / (true_positive + false_positive)
 	if snakefile == False:
 		# Print results
 		print("\n ### Results for sample : " + str(filename))
-		results_log.write("\n ### Results for sample : " + str(filename))
 		print(" Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
-		results_log.write("\n Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
 		print(" Total mutations in Sample : " + str(sample_list_count))
-
 		print("\n #### Global Statistics")
-		results_log.write("\n\n #### Global Statistics")
 		print(" True Positives : " + str(true_positive) + " = " + str(true_positive_verify))
-		results_log.write("\n True Positives : " + str(true_positive) + " = " + str(true_positive_verify))
 		print(" False Positives : " + str(false_positive))
-		results_log.write("\n False Positives : " + str(false_positive))
 		print(" False Negatives : " + str(false_negative))
-		results_log.write("\n False Negatives : " + str(false_negative))
-
-		result_sensitivity = 100 * true_positive / (true_positive + false_negative)
 		print(" Sensitivity : " + str(result_sensitivity) + " %")
-		results_log.write("\n Sensitivity : " + str(result_sensitivity) + " %")
-		result_precision = 100 * true_positive / (true_positive + false_positive)
 		print(" Precision : " + str(result_precision) + " %")
-		results_log.write("\n Precision : " + str(result_precision) + " %")
 		print(" F-Score : " + str(2*((result_precision * result_sensitivity)/(result_precision + result_sensitivity)) ))
-		results_log.write("\n F-Score : " + str(2*((result_precision * result_sensitivity)/(result_precision + result_sensitivity)) ) + "\n")
-
 		print("\n #### Origin Breakdown")
-		results_log.write("\n\n #### Origin Breakdown")
 		print(" Germline Matches : " + str(TP_cloneG))
 		print(" Somatic Matches : " + str(TP_cloneA + TP_cloneB))
-		results_log.write("\n Proportion of Germline matches : " + str(100* TP_cloneG / (TP_cloneB + TP_cloneA + TP_cloneG)) + " %")
 		print(" Proportion of Germline matches : " + str(100* TP_cloneG / (TP_cloneB + TP_cloneA + TP_cloneG)) + " %")
-		results_log.write("\n Germline Sensitivity : " + str(100 * TP_cloneG / (TP_cloneG + FN_cloneG)))
 		print(" Germline Sensitivity : " + str(100 * TP_cloneG / (TP_cloneG + FN_cloneG)) + " %")
-		results_log.write("\n Somatic Sensitivity : " + str(100 * (TP_cloneB + TP_cloneA) / ((TP_cloneB + TP_cloneA) + (FN_cloneB + FN_cloneA))))
 		print(" Somatic Sensitivity : " + str(100 * (TP_cloneB + TP_cloneA) / ((TP_cloneB + TP_cloneA) + (FN_cloneB + FN_cloneA))) + " %")
-
-
+	if dryrun == False:
+		# Write results to file
+		results_log.write("\n ### Results for sample : " + str(filename))
+		results_log.write("\n Total mutations in Control : " + str(false_negative + true_positive) + " = " + str(control_id_count))
+		results_log.write("\n\n #### Global Statistics")
+		results_log.write("\n True Positives : " + str(true_positive) + " = " + str(true_positive_verify))
+		results_log.write("\n False Positives : " + str(false_positive))
+		results_log.write("\n False Negatives : " + str(false_negative))
+		results_log.write("\n Sensitivity : " + str(result_sensitivity) + " %")
+		results_log.write("\n Precision : " + str(result_precision) + " %")
+		results_log.write("\n F-Score : " + str(2*((result_precision * result_sensitivity)/(result_precision + result_sensitivity)) ) + "\n")
+		results_log.write("\n\n #### Origin Breakdown")
+		results_log.write("\n Proportion of Germline matches : " + str(100* TP_cloneG / (TP_cloneB + TP_cloneA + TP_cloneG)) + " %")
+		results_log.write("\n Germline Sensitivity : " + str(100 * TP_cloneG / (TP_cloneG + FN_cloneG)))
+		results_log.write("\n Somatic Sensitivity : " + str(100 * (TP_cloneB + TP_cloneA) / ((TP_cloneB + TP_cloneA) + (FN_cloneB + FN_cloneA))))
 		FP_log.close()
 		FP_log_regex.close()
 		matched_log.close()
 		quality_TP_log.close()
 
-		FP_log_regex = open((str(noext_filename) + "_false_positives" + "_regex.txt"),'r').read()
-		FP_log_regex = "sed \"/" + FP_log_regex + "/p\" " + str(str(args['control'])) + " > " + str(str(args['control'])) + "_matches.txt"
+		# FP_log_regex = open((str(noext_filename) + "_false_positives" + "_regex.txt"),'r').read()
+		# FP_log_regex = "sed \"/" + FP_log_regex + "/p\" " + str(str(args['control'])) + " > " + str(str(args['control'])) + "_matches.txt"
 		# print(FP_log_regex)
 # End of function
 
@@ -192,6 +194,7 @@ parser = argparse.ArgumentParser(description="Sean's magic tool to compare sampl
 parser.add_argument('-s','--sample', help='--sample [sample.vcf]', required=True)
 parser.add_argument('-c','--control', help='the control file to test the sample against \n --control [control.vcf]', required=True)
 parser.add_argument('--snakefile',  action='store_true', help='When activated, script will only generate the files necessary for the snakefile', required=False)
+parser.add_argument('--dryrun',  action='store_true', help='When activated, script will not generate any result files', required=False)
 args = vars(parser.parse_args())
 
 if bool(args['snakefile']) == True:
@@ -199,11 +202,17 @@ if bool(args['snakefile']) == True:
 else:
     snakefile = False
 
+if bool(args['dryrun']) == True:
+	dryrun = True
+else:
+    dryrun = False
 
 if snakefile == False:
-	results_log = open("table_results.txt",'w')
 	print("\n################# S T A T S ##################")
-	results_log.write("\n################# S T A T S ##################")
+	if dryrun == False:
+		results_log = open("table_results.txt",'w')
+		results_log.write("\n################# S T A T S ##################")
+
 
 # Execute the program with the inputted files
 if os.path.isdir(args['sample']) == False:
@@ -216,4 +225,5 @@ else:
 
 if snakefile == False:
 	print("\n##############################################\n")
-	results_log.write("\n##############################################\n")
+	if dryrun == False:
+		results_log.write("\n##############################################\n")

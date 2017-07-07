@@ -10,6 +10,10 @@ ggplot(data, aes(x=quality, fill=category)) + geom_density(alpha=.3)
 # dev.print(png, 'variant_COUNT.png',width = 600)
 # dev.print(png, 'variant-DENSITY.png',width = 600)
 
-file <- tempfile()
-ggsave(file, device = "pdf")
-unlink(file)
+#file <- tempfile()
+#ggsave(file, device = "pdf")
+#unlink(file)
+
+
+varcount<-last_plot()
+ggsave(varcount,file="variant_COUNT.png",width=7)
